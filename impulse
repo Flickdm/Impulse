@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# - Flickdm -
+
+# A bash way to interact with SafeConnect
+
+# Set to true if you only want to be prompted is something fails
+# You will also have to set the PROMPT_FOR_INPUT to be false too
+QUIET_IF_SUCCESS=false
+
+# If you dont want to be prompted every time
+# set this to false and enter the USER and PASS field
+PROMPT_FOR_INPUT=true
+
+# 6+2
+USER=""
+
+# Password
+PASS=""
+
+#You accept the terms of service
+ACCEPT="on"
+
+# Authorization Server
+AUTH_URL="https://auth.impulse.com:8443/"
+
+# User Agent, Safe connect actually tries to parse this.
+# And complains if it can't identify the browser
+# There is no standard for User Agents
+USER_AGENT="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/534.30 (KHTML, like Gecko) Chrome/12.0.742.112 Safari/534.30"
+
+# Honestly I wish I had a beter way to determine if the portal let us through,
+# We know though that if we get redirected to the home page it was successful
+# if you go to another University I would updated this o.O
+SUCCESS_STRING="<title>Home, University of Cincinnati</title>"
+
+# Prompt for Input
+if $PROMPT_FOR_INPUT; then
+    printf "\n"
+    # I would also update this too
+    echo "By using this script you agree to the University of Cincinnati's TOS."
+    echo "If this is not true, press 'Ctrl-C now.'"
+    printf "\n"
+
+    echo -n "Enter 6+2 username [ENTER]: "
+    read $USER
+
+    echo -n "Enter password [ENTER]: "
+    read -s $PASS
+    printf "\n"
+fi
+
+# Post Request
+# if you go to another university or this gets updated, you just have to make sure the fields
+# match the desired post request. For me this was userId, pass, accptPlcy, platform
+POST="userId=${USER}&pass=${PASS}&accptPlcy=${on}&platform=Linux+x86_64&appversion=5.0+(X11)"
+
+RESPONSE=$(wget -qO- /dev/null --post-data="${POST}" --user-agent="${USER_AGENT}" "${AUTH_URL}")
+
+# Curl Version
+# RESPONSE=$(curl -s -A  "${USER_AGENT}" -d "${POST}" "${AUTH_URL}") # pass --verbose for debug
+
+printf "\n"
+if [[ ${RESPONSE} == *${SUCCESS_STRING}* ]]; then
+    # If we use curl this would look more like [[ -z ${RESPONSE} ]];
+    # Since the default behavior for curl is to be quiet if the post goes
+    # through and I'm lazy
+
+    if ! ${QUIET_IF_SUCCESS}; then
+        echo "[STATUS] Successfully got through SafeConnect"
+        echo "[STATUS] Testing Internet Connection.."
+    fi
+
+    wget -q --spider http://google.com
+
+    if [ $? -eq 0 ]; then
+            if ! ${QUIET_IF_SUCCESS}; then
+                echo "[STATUS] Online"
+                echo "[STATUS] OK"
+            fi
+        else
+            echo "[STATUS] Offline"
+            echo "[STATUS] FAILURE"
+    fi
+
+else
+    echo $RESPONSE
+    printf "\n"
+    echo "[STATUS] Failure"
+fi
+printf "\n"
